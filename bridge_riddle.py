@@ -44,7 +44,7 @@ class Move:
 
 	@property
 	def dotstring(self):
-		return "\"" + ", ".join([unicode(p) for p in self.persons]) + "\""
+		return "\"" + ", ".join([unicode(p) for p in self.persons]) + " to " + self.target +  "\""
 
 class State:
 	def __init__(self, people_locations, lantern_location, time = 0.0):
@@ -118,9 +118,11 @@ class State:
 	@property
 	def dotstring(self):
 		if self.is_victory:
-			return self.dotstring_id + " [ penwidth=3 style=filled fillcolor=green ]"
+			return self.dotstring_id + " [ penwidth=5 style=filled fillcolor=chartreuse ]"
+		elif not self.is_alive:
+			return self.dotstring_id + " [ style=dashed style=filled fillcolor=red4 ]"
 		else:
-			return self.dotstring_id + " [ colorscheme=rdylgn11 fontcolor={} ]".format(int(1.0+(1.0-self.criticity)*10.0))
+			return self.dotstring_id + " [ style=filled colorscheme=rdylgn11 fillcolor={} ]".format(int(1.0+(1.0-self.criticity)*10.0))
 
 	@property
 	def is_alive(self):
@@ -159,6 +161,6 @@ if __name__ == "__main__":
 	                      lantern_location = START_PLACE_NAME,
 	                      time = 0)
 
-	print "digraph \"Bridge Riddle graph\" {"
+	print "strict digraph \"Bridge Riddle graph\" {"
 	recursivelyPrintDotstringMove(initial_state)
 	print "}"
