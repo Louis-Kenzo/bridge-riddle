@@ -1,12 +1,14 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+import copy
 import itertools
 import collections
 from operator import attrgetter
 
 START_PLACE_NAME = "Peak"
 END_PLACE_NAME = "Safety"
+LIMIT_TIME = 17
 
 class Person:
 	def __init__(self, name, bridge_crossing_time):
@@ -61,20 +63,51 @@ class State:
 
 	@property
 	def possible_moves(self):
-		return [Move(persons = group, origin = self.lantern_location, target = destination)
+		return [Move(persons = group,
+		              origin = self.lantern_location,
+		              target = destination)
 		        for group in self.possible_groups
 		        for destination in self.possible_destinations]
 
 	def executeMove(self, move):
-		return State(people_locations = self.people_locations,
+		for p in move.persons:
+			assert p in self.people_locations[move.origin], "Impossible move"
+
+		moved_people_locations = {}
+		for l in self.people_locations.iterkeys():
+			moved_people_locations[l] = copy.copy(self.people_locations[l])
+
+		for p in move.persons:
+			moved_people_locations[move.origin].remove(p)
+			moved_people_locations[move.target].add(p)
+
+		return State(people_locations = moved_people_locations,
 		             lantern_location = move.target,
 		             time = self.time + move.time)
 
+	@property
+	def _time_string(self):
+		return "t = %smin" % self.time
+
+	@property
+	def _people_locations_string(self):
+		return " | ".join(location + " ("+", ".join([unicode(p) for p in self.people_locations[location]])+")"
+		                                             for location in sorted(self.people_locations.iterkeys()))
+
 	def __unicode__(self):
-		time_string = "t = %smin" % self.time
-		people_locations_string = " | ".join(location + " ("+", ".join([unicode(p) for p in self.people_locations[location]])+")"
-		                                     for location in sorted(self.people_locations.iterkeys()))
-		return time_string + ": " + people_locations_string
+		return self._time_string + ": " + self._people_locations_string
+
+	@property
+	def dotstring(self):
+		return "\"" + self._time_string + "\\n" + self._people_locations_string + "\""
+
+	@property
+	def is_alive(self):
+		return self.time <= LIMIT_TIME
+
+	@property
+	def criticity(self):
+		return self.time / TIME_LIMIT
 
 if __name__ == "__main__":
 	me            = Person(name = "Me",            bridge_crossing_time = 1)
@@ -82,11 +115,16 @@ if __name__ == "__main__":
 	janitor       = Person(name = "Janitor",       bridge_crossing_time = 5)
 	professor     = Person(name = "Professor",     bridge_crossing_time = 10)
 
-	initial_state = State(people_locations = {START_PLACE_NAME: set([me, lab_assistant, janitor, professor]),
+	initial_state = State(people_locations = {START_PLACE_NAME: {me, lab_assistant, janitor, professor},
 	                                          END_PLACE_NAME: set()},
 	                      lantern_location = START_PLACE_NAME,
 	                      time = 0)
 
-	print unicode(initial_state)
-	for p in initial_state.possible_moves:
-		print unicode(p)
+	print "digraph \"Bridge Riddle graph\" {"
+
+	current_state = initial_state
+	for move in current_state.possible_moves:
+		moved_state = current_state.executeMove(move)
+		print "\t" + initial_state.dotstring + " -> " + moved_state.dotstring + ";"
+
+	print "}"
