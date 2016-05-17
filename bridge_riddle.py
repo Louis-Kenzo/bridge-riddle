@@ -151,10 +151,10 @@ def recursivelyPrintDotstringMove(state):
 			recursivelyPrintDotstringMove(moved_state)
 
 if __name__ == "__main__":
-	me            = Person(name = "Me",            bridge_crossing_time = 1)
-	lab_assistant = Person(name = "Lab assistant", bridge_crossing_time = 2)
-	janitor       = Person(name = "Janitor",       bridge_crossing_time = 5)
-	professor     = Person(name = "Professor",     bridge_crossing_time = 10)
+	me            = Person(name = "Me",        bridge_crossing_time = 1)
+	lab_assistant = Person(name = "Assistant", bridge_crossing_time = 2)
+	janitor       = Person(name = "Janitor",   bridge_crossing_time = 5)
+	professor     = Person(name = "Professor", bridge_crossing_time = 10)
 
 	initial_state = State(people_locations = {START_PLACE_NAME: {me, lab_assistant, janitor, professor},
 	                                          END_PLACE_NAME: set()},
