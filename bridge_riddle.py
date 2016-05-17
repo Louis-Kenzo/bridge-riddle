@@ -8,7 +8,7 @@ from operator import attrgetter
 
 START_PLACE_NAME = "Peak"
 END_PLACE_NAME = "Safety"
-LIMIT_TIME = 17
+LIMIT_TIME = 17.0
 
 class Person:
 	def __init__(self, name, bridge_crossing_time):
@@ -42,6 +42,10 @@ class Move:
 	def __str__(self):
 		return unicode(self).replace(u"—", "-").replace(u"►", ">")
 
+	@property
+	def dotstring(self):
+		return "\"" + ", ".join([unicode(p) for p in self.persons]) + "\""
+
 class State:
 	def __init__(self, people_locations, lantern_location, time = 0.0):
 		self.people_locations = people_locations
@@ -69,6 +73,16 @@ class State:
 		        for group in self.possible_groups
 		        for destination in self.possible_destinations]
 
+	@property
+	def sane_moves(self):
+		return [Move(persons = group,
+		              origin = self.lantern_location,
+		              target = destination)
+		        for group in self.possible_groups
+		        for destination in self.possible_destinations
+		        if destination == START_PLACE_NAME and isinstance(group, Person) \
+		        or destination == END_PLACE_NAME   and isinstance(group, collections.Iterable) and len(group) == 2]
+
 	def executeMove(self, move):
 		for p in move.persons:
 			assert p in self.people_locations[move.origin], "Impossible move"
@@ -87,27 +101,52 @@ class State:
 
 	@property
 	def _time_string(self):
-		return "t = %smin" % self.time
+		return "%s min" % self.time
 
 	@property
 	def _people_locations_string(self):
-		return " | ".join(location + " ("+", ".join([unicode(p) for p in self.people_locations[location]])+")"
-		                                             for location in sorted(self.people_locations.iterkeys()))
+		return "\\n".join(location + ": "+", ".join([unicode(p) for p in sorted(self.people_locations[location], key=attrgetter("bridge_crossing_time"))])+""
+		                                             for location in sorted(self.people_locations.iterkeys()) if self.people_locations[location])
 
 	def __unicode__(self):
 		return self._time_string + ": " + self._people_locations_string
 
 	@property
-	def dotstring(self):
+	def dotstring_id(self):
 		return "\"" + self._time_string + "\\n" + self._people_locations_string + "\""
+
+	@property
+	def dotstring(self):
+		if self.is_victory:
+			return self.dotstring_id + " [ penwidth=3 style=filled fillcolor=green ]"
+		else:
+			return self.dotstring_id + " [ colorscheme=rdylgn11 fontcolor={} ]".format(int(1.0+(1.0-self.criticity)*10.0))
 
 	@property
 	def is_alive(self):
 		return self.time <= LIMIT_TIME
 
 	@property
+	def is_victory(self):
+		return self.is_alive and len(self.people_locations[START_PLACE_NAME]) == 0
+
+	@property
 	def criticity(self):
-		return self.time / TIME_LIMIT
+		return max(min(self.time / LIMIT_TIME, 1.0), 0.0)
+
+def dotstringMove(initial_state, move, moved_state):
+	print "\t" + initial_state.dotstring
+	print "\t" + moved_state.dotstring
+	return "\t" + initial_state.dotstring_id \
+	     + " -> " + moved_state.dotstring_id \
+	     + " [ label=" + move.dotstring + " ]"
+
+def recursivelyPrintDotstringMove(state):
+	if state.is_alive and not state.is_victory:
+		for move in state.sane_moves:
+			moved_state = state.executeMove(move)
+			print dotstringMove(state, move, moved_state)
+			recursivelyPrintDotstringMove(moved_state)
 
 if __name__ == "__main__":
 	me            = Person(name = "Me",            bridge_crossing_time = 1)
@@ -121,10 +160,5 @@ if __name__ == "__main__":
 	                      time = 0)
 
 	print "digraph \"Bridge Riddle graph\" {"
-
-	current_state = initial_state
-	for move in current_state.possible_moves:
-		moved_state = current_state.executeMove(move)
-		print "\t" + initial_state.dotstring + " -> " + moved_state.dotstring + ";"
-
+	recursivelyPrintDotstringMove(initial_state)
 	print "}"
